@@ -8,6 +8,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    password_confirm: str
 
 
 class User(UserBase):
@@ -16,3 +17,8 @@ class User(UserBase):
 
     class Config:
         orm_mode = True
+
+
+class TokenGet(BaseModel):
+    email: str
+    password: str
