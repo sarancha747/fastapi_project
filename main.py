@@ -1,4 +1,5 @@
 from datetime import timedelta
+from pathlib import Path
 from typing import List
 from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, HTTPException, status, Request
@@ -17,9 +18,14 @@ from database import engine, SessionLocal
 
 # to get a string like this run:
 # openssl rand -hex 32
+BASE_DIR = Path(__file__).resolve().parent
+FILE_DIR = 'files/'
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 1
+
+models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
 

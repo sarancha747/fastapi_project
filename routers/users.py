@@ -1,5 +1,4 @@
 from datetime import timedelta
-from typing import List
 from fastapi import Depends, HTTPException, status, APIRouter
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -11,11 +10,11 @@ import models
 import schemas
 from database import engine, SessionLocal
 
+
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
-
 
 
 def get_db():
@@ -32,6 +31,7 @@ def verify_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
 
 def authenticate_user(db, email: str, password: str):
     user = crud.get_user_by_email(db, email)
@@ -88,8 +88,3 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_user(db=db, user=user)
 
-
-@router.get("/users/", response_model=List[schemas.User])
-async def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    users = crud.get_users(db, skip=skip, limit=limit)
-    return users
