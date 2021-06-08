@@ -1,28 +1,17 @@
 from datetime import timedelta
-from fastapi import Depends, HTTPException, status, APIRouter
+from fastapi import Depends, HTTPException, status, APIRouter, Header
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from validate_email import validate_email
 from fastapi_jwt_auth import AuthJWT
-import main
+import settings
 import crud
-import models
 import schemas
-from database import engine, SessionLocal
-
+from database import get_session
 
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-models.Base.metadata.create_all(bind=engine)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def verify_password(plain_password, hashed_password):
@@ -33,8 +22,9 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def authenticate_user(db, email: str, password: str):
-    user = crud.get_user_by_email(db, email)
+async def authenticate_user(session, email: str, password: str):
+    user = await crud.get_user_by_email(session, email)
+    print("##########", user)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -44,14 +34,14 @@ def authenticate_user(db, email: str, password: str):
 
 @router.post("/token")
 async def login_for_access_token(login_data: schemas.TokenGet, Authorize: AuthJWT = Depends(),
-                                 db: Session = Depends(get_db)):
-    user = authenticate_user(db, login_data.email, login_data.password)
+                                 session: AsyncSession = Depends(get_session)):
+    user = await authenticate_user(session, login_data.email, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-    expires = timedelta(days=main.ACCESS_TOKEN_EXPIRE_DAYS)
+    expires = timedelta(days=settings.ACCESS_TOKEN_EXPIRE_DAYS)
     access_token = Authorize.create_access_token(subject=user.email, expires_time=expires)
     refresh_token = Authorize.create_refresh_token(subject=user.email)
     Authorize.set_access_cookies(access_token)
@@ -69,22 +59,22 @@ async def refresh(Authorize: AuthJWT = Depends()):
 
 
 @router.delete('/logout')
-async def logout(Authorize: AuthJWT = Depends()):
+async def logout(Authorize: AuthJWT = Depends(),X_CSRF_Token: str = Header(None, convert_underscores=True),):
     Authorize.jwt_required()
     Authorize.unset_jwt_cookies()
     return {"msg": "Successfully logout"}
 
 
 @router.post("/create-users/", response_model=schemas.User)
-async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+async def create_user(user: schemas.UserCreate, session: AsyncSession = Depends(get_session)):
     if user.password == "":
         raise HTTPException(status_code=400, detail="Password is empty")
     if user.password != user.password_confirm:
         raise HTTPException(status_code=400, detail="Password mismatch")
     if not validate_email(user.email):
         raise HTTPException(status_code=400, detail="Email is invalid")
-    db_user = crud.get_user_by_email(db, email=user.email)
+    db_user = await crud.get_user_by_email(session, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db=db, user=user)
-
+    created_user = await crud.create_user(session, user=user)
+    return created_user
