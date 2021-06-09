@@ -1,5 +1,4 @@
 import asyncio
-
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request
 from fastapi_jwt_auth.exceptions import AuthJWTException
@@ -7,16 +6,15 @@ from pydantic import BaseModel
 from fastapi_jwt_auth import AuthJWT
 from routers import users, files
 import settings
-from database import Base
 from database import init_models
 
 app = FastAPI()
 
 
-
 @app.on_event("startup")
 async def startup():
     await init_models()
+
 
 class Settings(BaseModel):
     authjwt_secret_key: str = settings.SECRET_KEY

@@ -1,22 +1,30 @@
-from datetime import datetime
-from pydantic import BaseModel
+from bson.objectid import ObjectId as BsonObjectId
+from pydantic import BaseModel, Field
 
 
-class UserBase(BaseModel):
+class PydanticObjectId(BsonObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not isinstance(v, BsonObjectId):
+            raise TypeError('ObjectId required')
+        return str(v)
+
+
+class UserCreate(BaseModel):
     email: str
-
-
-class UserCreate(UserBase):
     password: str
     password_confirm: str
 
 
-class User(UserBase):
-    id: int
+class User(BaseModel):
+    id: PydanticObjectId = Field(..., alias='_id')
+    email: str
     is_active: bool
-
-    class Config:
-        orm_mode = True
+    created: str
 
 
 class TokenGet(BaseModel):
@@ -25,28 +33,24 @@ class TokenGet(BaseModel):
 
 
 class File(BaseModel):
-    id: int
+    id: PydanticObjectId = Field(..., alias='_id')
     title: str
     description: str
     file_title: str
-    created: datetime
-
-    class Config:
-        orm_mode = True
+    created: str
+    upload_id: str
+    owner_id: str
 
 
 class FileCreate(BaseModel):
     title: str
     description: str
     file_title: str
-    upload_id: int
-    owner_id: int
+    upload_id: PydanticObjectId
+    owner_id: PydanticObjectId
 
 
 class FileHashCreate(BaseModel):
     file_hash: str
     real_file_path: str
     real_file_name: str
-
-    class Config:
-        orm_mode = True
