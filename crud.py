@@ -1,7 +1,3 @@
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import schemas
 from routers import users
 from datetime import datetime
 

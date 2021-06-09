@@ -4,8 +4,6 @@ import uuid
 from typing import List, Tuple
 from fastapi import APIRouter, File, Form, UploadFile, Depends, Header
 from fastapi_jwt_auth import AuthJWT
-from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_session
 from fastapi.encoders import jsonable_encoder
 import crud
 import schemas
@@ -22,8 +20,7 @@ async def create_file(title: str = Form(...),
                       description: str = Form(...),
                       upload: UploadFile = File(...),
                       X_CSRF_Token: str = Header(None, convert_underscores=True),
-                      Authorize: AuthJWT = Depends(),
-                      session: AsyncSession = Depends(get_session)):
+                      Authorize: AuthJWT = Depends(),):
     Authorize.jwt_required()
     current_user = Authorize.get_jwt_subject()
     user = await crud.get_user_by_email(db, current_user)
