@@ -1,8 +1,10 @@
 import hashlib
 import os
 import uuid
-from typing import List, Tuple
-from fastapi import APIRouter, File, Form, UploadFile, Depends, Header
+from typing import List
+
+from bson import ObjectId
+from fastapi import APIRouter, File, Form, UploadFile, Depends, Header, Body, HTTPException
 from fastapi_jwt_auth import AuthJWT
 from fastapi.encoders import jsonable_encoder
 import crud
@@ -15,12 +17,12 @@ client = motor.motor_asyncio.AsyncIOMotorClient('localhost', 27017)
 db = client.trainee_project
 
 
-@router.post("/files/", response_model=schemas.File)
+@router.post("/add-file/", response_model=schemas.File)
 async def create_file(title: str = Form(...),
                       description: str = Form(...),
                       upload: UploadFile = File(...),
                       X_CSRF_Token: str = Header(None, convert_underscores=True),
-                      Authorize: AuthJWT = Depends(),):
+                      Authorize: AuthJWT = Depends(), ):
     Authorize.jwt_required()
     current_user = Authorize.get_jwt_subject()
     user = await crud.get_user_by_email(db, current_user)
@@ -53,9 +55,50 @@ async def check_uploaded_file_hash(file_to_save, file_name, file_dir):
         return file_hash
 
 
-@router.get("/user_files/", response_model=List[schemas.File], )
+@router.get("/user-files/", response_model=List[schemas.File], )
 async def get_files(Authorize: AuthJWT = Depends()):
     Authorize.jwt_required()
     current_user = Authorize.get_jwt_subject()
     user = await crud.get_user_by_email(db, current_user)
     return await crud.get_user_files(db, str(user["_id"]))
+
+
+@router.delete("/delete-file/{file_id}")
+async def delete_file(file_id: str, X_CSRF_Token: str = Header(None, convert_underscores=True),
+                      Authorize: AuthJWT = Depends()):
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    try:
+        file_id = ObjectId(file_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Wrong file Id")
+    file = await crud.get_file_by_id(db, file_id)
+    if not file:
+        raise HTTPException(status_code=400, detail="Wrong file Id")
+    user = await crud.get_user_by_email(db, current_user)
+    if ObjectId(file["owner_id"]) == user["_id"]:
+        await crud.delete_file_by_id(db, file["_id"])
+    else:
+        raise HTTPException(status_code=400, detail="Wrong file Id")
+    return {"msg": "Successfully deleted"}
+
+
+@router.put("/update-file/{file_id}")
+async def update_file(file_id: str, updated_file: schemas.FileUpdate,
+                      X_CSRF_Token: str = Header(None, convert_underscores=True),
+                      Authorize: AuthJWT = Depends()):
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    try:
+        file_id = ObjectId(file_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Wrong file Id")
+    file = await crud.get_file_by_id(db, file_id)
+    if not file:
+        raise HTTPException(status_code=400, detail="Wrong file Id")
+    user = await crud.get_user_by_email(db, current_user)
+    if ObjectId(file["owner_id"]) == user["_id"]:
+        await crud.update_file_by_id(db, file["_id"], jsonable_encoder(updated_file))
+    else:
+        raise HTTPException(status_code=400, detail="Wrong file Id")
+    return {"msg": "Successfully updated"}

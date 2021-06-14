@@ -30,6 +30,15 @@ async def create_file(db, file):
     return await db["file"].insert_one(file)
 
 
+async def delete_file_by_id(db, file_id):
+    return await db["file"].delete_one({"_id": file_id})
+
+
+async def update_file_by_id(db, file_id, updated_file):
+    return await db["file"].update_one({"_id": file_id}, {
+        "$set": {"title": updated_file["title"], "description": updated_file["description"]}})
+
+
 async def get_hashed_file_by_id(db, hash_file_id):
     created_file = await db["file_hash"].find_one({"_id": hash_file_id})
     return created_file

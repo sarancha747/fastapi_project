@@ -25,7 +25,7 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-async def authenticate_user(email: str, password: str):
+async def authenticate_user(email, password):
     user = await crud.get_user_by_email(db, email)
     if not user:
         return False

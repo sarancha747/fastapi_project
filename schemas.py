@@ -1,8 +1,8 @@
-from bson.objectid import ObjectId as BsonObjectId
 from pydantic import BaseModel, Field
+from bson.objectid import ObjectId as BsonObjectId
 
 
-class PydanticObjectId(BsonObjectId):
+class PydanticObjectId(BaseModel):
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
@@ -48,6 +48,11 @@ class FileCreate(BaseModel):
     file_title: str
     upload_id: PydanticObjectId
     owner_id: PydanticObjectId
+
+
+class FileUpdate(BaseModel):
+    title: str
+    description: str
 
 
 class FileHashCreate(BaseModel):
